@@ -99,7 +99,7 @@ const recursion = (level, params) =>{
 
 又称“试探法”，类比深度遍历
 
-···python
+```python
 def backtrace():
   for choice in choices:
     # set state
