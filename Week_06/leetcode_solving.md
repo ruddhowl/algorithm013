@@ -200,7 +200,7 @@ public:
         if(m == 0 || n == 0) return 0;
         for(int i = 1; i <= m; ++i) {
             for(int j = 1; j <= n; ++j) {
-                if(text1[i - 1] == text2[j - 1])dp[i][j] = dp[i - 1][j - 1] + 1;
+                if(text1[i - 1] == text2[j - 1]) dp[i][j] = dp[i - 1][j - 1] + 1;
                 else dp[i][j] = max(dp[i - 1][j], dp[i][j - 1]);
             }
         }
@@ -211,7 +211,28 @@ public:
 
 #### [70. Climbing Stairs](https://leetcode-cn.com/problems/climbing-stairs/)
 
-1、
+1、动态规划
+$$
+dp[i] = dp[i - 1] + dp[i -2]
+$$
+
+```C++
+class Solution {
+public:
+    int climbStairs(int n) {
+        if(0 == n || 1 == n) return 1;
+        int dp[3] = {1,1};
+        for(int i = 2; i <= n; ++i) {
+            dp[2] = dp[0] + dp[1];
+            dp[0] = dp[1];
+            dp[1] = dp[2];
+        }
+        return dp[2];
+    }
+};
+```
+
+
 
 #### [120. Triangle](https://leetcode-cn.com/problems/triangle/)
 
@@ -243,4 +264,285 @@ public:
 
 #### [53. Maximum Subarray](https://leetcode-cn.com/problems/maximum-subarray/)
 
+1、遍历
+
+```C++
+class Solution {
+public:
+    int maxSubArray(vector<int>& nums) {
+        int size = nums.size(), res = INT_MIN, sum = INT_MIN;
+        for(int i = 0; i < size; ++i) {
+            if(sum < 0) sum = nums[i];
+            else if(sum >= 0) sum += nums[i];
+            if(sum > res) res = sum;
+        }
+        return res;
+    }
+};
+```
+
+2、动态规划
+$$
+dp = max(dp + nums[i], nums[i])
+$$
+
+
+```C++
+class Solution {
+public:
+    int maxSubArray(vector<int>& nums) {
+        int size = nums.size(), res = INT_MIN, dp = -1;
+        for(int i = 0; i < size; ++i) {
+            dp = max(dp + nums[i], nums[i]);
+            if(dp > res) res = dp;
+        }
+        return res;
+    }
+};
+```
+
+
+
 #### [152. Maximum Product Subarray](https://leetcode-cn.com/problems/maximum-product-subarray/)
+
+1、动态规划、滚动数组
+
+T: O(n); S: O(1)
+$$
+\begin{cases}
+minus = min(plus * nums[i], nums[i]),\ plus = max(minus * nums[i], 0), &nums[i] < 0\\
+minus = min(minus * nums[i], 0),\ plus = max(plus * nums[i], nums[i]), &nums[i] >= 0
+\end{cases}
+$$
+
+
+```C++
+class Solution {
+public:
+    int maxProduct(vector<int>& nums) {
+        int size = nums.size(), minus = 0, plus = 0, res = INT_MIN;
+        if(size == 1) return nums[0];
+        for(int i = 0; i < size; ++i) {
+			if(nums[i] < 0) { // 增加这个判断，虽然会增加代码的长度，但是可以避免不必要的乘法计算
+                int preminus = minus;
+                minus = min(plus * nums[i], nums[i]);
+                plus = max(preminus * nums[i], 0);
+            } else {
+                minus = min(minus * nums[i], 0);
+                plus = max(plus * nums[i], nums[i]);
+            }
+            if(plus > res) res = plus;
+        }
+        return res;
+    }
+};
+```
+
+```C++
+class Solution {
+public:
+    int maxProduct(vector<int>& nums) {
+        int size = nums.size(), minus = nums[0], plus = nums[0], res = nums[0];
+        for(int i = 1; i < size; ++i) {
+            int preminus = minus, preplus = plus;
+            minus = min(preplus * nums[i], min(preminus * nums[i], nums[i]));
+            plus = max(preplus * nums[i], max(preminus * nums[i], nums[i]));
+            if(plus > res) res = plus;
+        }
+        return res;
+    }
+};
+```
+
+#### [322. Coin Change](https://leetcode-cn.com/problems/coin-change/)
+
+1、错误解法：贪心
+
+```C++
+/*
+input:
+[3,11]
+29
+output: -1
+expect: 7
+*/
+class Solution {
+public:
+    int coinChange(vector<int>& coins, int amount) {
+        sort(coins.begin(), coins.end());
+        int size = coins.size(), left = amount, res = 0;
+        for(int i = size - 1; i >= 0 && left > 0; --i) {
+            res += left / coins[i];
+            left %= coins[i];
+        }
+        return (left == 0) ? res : -1;
+    }
+};
+```
+
+2、动态规划（完全背包问题）
+$$
+dp[i][s] = min(dp[i - 1][s], dp[i][s - coins[i]] + 1)
+$$
+
+```C++
+class Solution {
+public:
+    int coinChange(vector<int>& coins, int amount) {
+        if(amount == 0) return 0;
+        // sort(coins.rbegin(), coins.rend());
+        int size = coins.size();
+        vector<vector<int>> dp(size, vector<int>(amount + 1, -1));
+        for(int i = 0, sum = 0; sum <= amount; sum = ++i * coins[0]) dp[0][sum] = i;
+        for(int i = 0; i < size; ++i) dp[i][0] = 0;
+        for(int i = 1; i < size; ++i) {
+            for(int j = 1; j <= amount; ++j) {
+                if(j < coins[i]) {
+                    dp[i][j] = dp[i - 1][j];
+                } else if(dp[i - 1][j] != -1 && dp[i][j - coins[i]] != -1) {
+                    dp[i][j] = min(dp[i - 1][j], dp[i][j - coins[i]] + 1);
+                } else if(dp[i - 1][j] != -1){
+                    dp[i][j] = dp[i - 1][j];
+                } else if(dp[i][j - coins[i]] != -1) {
+                    dp[i][j] = dp[i][j - coins[i]] + 1;
+                }
+            }
+        }
+        return dp[size - 1][amount];
+    }
+};
+```
+
+```C++
+class Solution {
+public:
+    int coinChange(vector<int>& coins, int amount) {
+        if(amount == 0) return 0;
+        int size = coins.size();
+        vector<vector<int>> dp(size, vector<int>(amount + 1, amount + 1));
+        for(int i = 0, sum = 0; sum <= amount; sum = ++i * coins[0]) dp[0][sum] = i;
+        for(int i = 0; i < size; ++i) dp[i][0] = 0;
+        for(int i = 1; i < size; ++i) {
+            for(int j = 1; j <= amount; ++j) {
+                if(j < coins[i]) {
+                    dp[i][j] = dp[i - 1][j];
+                } else {
+                    dp[i][j] = min(dp[i - 1][j], dp[i][j - coins[i]] + 1);
+                }
+            }
+        }
+        return (dp[size - 1][amount] == amount + 1) ? -1 : dp[size - 1][amount];
+    }
+};
+```
+
+
+
+2、动态规划、滚动数组
+
+```C++
+class Solution {
+public:
+    int coinChange(vector<int>& coins, int amount) {
+        vector<int> dp(amount + 1, amount + 1);
+        dp[0] = 0;
+        for(int i = 1; i <= amount; i++){
+            for(int j = 0; j < coins.size(); j++){
+                if((i - coins[j]) >= 0){
+                    dp[i] = min(dp[i], dp[i - coins[j]] + 1);
+                }
+            }
+        }
+        return (dp[amount] == amount + 1) ? -1 : dp[amount];
+    }
+};
+```
+
+```C++
+class Solution {
+public:
+    int coinChange(vector<int>& coins, int amount) {
+        int size = coins.size();
+        vector<int> dp(amount + 1, amount + 1);
+        dp[0] = 0;
+        for(int i = 0; i < size; ++i) {
+            for(int j = coins[i]; j <= amount; ++j) {
+                dp[j] = min(dp[j], dp[j - coins[i]] + 1);
+            }
+        }
+        return (dp[amount] == amount + 1) ? -1 : dp[amount];
+    }
+};
+```
+
+3、贪心变形、回溯、剪枝
+
+```C++
+class Solution {
+    int ans = INT_MAX;
+    void coinChange(vector<int> &coins, int amount, int c_idx, int cnt) {
+        if (amount == 0) {
+            ans = min(ans, cnt);
+            return;
+        }
+        if (c_idx == coins.size()) return;
+        for (int k = amount / coins[c_idx]; k >= 0 && k + cnt < ans; k--) {
+            coinChange(coins, amount - k * coins[c_idx], c_idx + 1, cnt + k);
+        }
+    }
+public:
+    int coinChange(vector<int> &coins, int amount) {
+        if(amount == 0) return 0;
+        sort(coins.rbegin(), coins.rend());
+        coinChange(coins, amount, 0, 0);
+        return ans == INT_MAX ? -1 : ans;
+    }
+};
+```
+
+#### [198. House Robber](https://leetcode-cn.com/problems/house-robber/)
+
+1、动态规划
+
+T: O(n); S: O(n)
+
+```C++
+class Solution {
+public:
+    int rob(vector<int>& nums) {
+        int size = nums.size();
+        if(0 == size) return 0;
+        else if(1 == size) return nums[0];
+        else if(2 == size) return max(nums[0], nums[1]);
+        vector<int> dp(size, 0);
+        dp[0] = nums[0]; dp[1] = max(nums[0], nums[1]);
+        for(int i = 2; i < size; ++i) {
+            dp[i] = max(dp[i - 1], dp[i - 2] + nums[i]);
+        }
+        return dp[size - 1];
+    }
+};
+```
+
+2、动态规划、空间优化
+
+T: O(n); S: O(1)
+
+```C++
+class Solution {
+public:
+    int rob(vector<int>& nums) {
+        int size = nums.size();
+        if(0 == size) return 0;
+        else if(1 == size) return nums[0];
+        else if(2 == size) return max(nums[0], nums[1]);
+        int dp[3] = {nums[0], max(nums[0], nums[1])};
+        for(int i = 2; i < size; ++i) {
+            dp[2] = max(dp[1], dp[0] + nums[i]);
+            dp[0] = dp[1]; dp[1] = dp[2];
+        }
+        return dp[2];
+    }
+};
+```
+
