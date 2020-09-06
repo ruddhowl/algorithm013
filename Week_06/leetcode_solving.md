@@ -536,12 +536,498 @@ public:
         if(0 == size) return 0;
         else if(1 == size) return nums[0];
         else if(2 == size) return max(nums[0], nums[1]);
-        int dp[3] = {nums[0], max(nums[0], nums[1])};
+        int dp[3] = {nums[0], max(nums[0], nums[1])}; //!!!
         for(int i = 2; i < size; ++i) {
             dp[2] = max(dp[1], dp[0] + nums[i]);
             dp[0] = dp[1]; dp[1] = dp[2];
         }
         return dp[2];
+    }
+};
+```
+
+
+
+#### [213. House Robber II](https://leetcode-cn.com/problems/house-robber-ii/)
+
+1、动态规划、问题转化
+
+把问题拆分成两个打家劫舍的子问题问题
+
+```C++
+class Solution {
+public:
+    int rob(vector<int>& nums) {
+        int size = nums.size();
+        if(0 == size) return 0;
+        else if(1 == size) return nums[0];
+        else if(2 == size) return max(nums[0], nums[1]);
+        else if(3 == size) return max(nums[0], max(nums[1], nums[2]));
+        int dp[3] = {nums[0], max(nums[0], nums[1])};
+        for(int i = 2; i < size - 1; ++i) {
+            dp[2] = max(dp[0] + nums[i], dp[1]);
+            dp[0] = dp[1]; dp[1] = dp[2];
+        }
+        int dp2[3] = {nums[1], max(nums[1], nums[2])};
+        for(int i = 3; i < size; ++i) {
+            dp2[2] = max(dp2[0] + nums[i], dp2[1]);
+            dp2[0] = dp2[1]; dp2[1] = dp2[2];
+        }
+        return dp[2] > dp2[2] ? dp[2] : dp2[2];
+    }
+};
+```
+
+
+
+#### [121. Best Time to Buy and Sell Stock](https://leetcode-cn.com/problems/best-time-to-buy-and-sell-stock/)
+
+1、动态规划
+
+缩小问题规模，通过子问题的解来求得最终结果
+
+假定每一个交易日为一个阶段，每一个阶段都有三种状态，分别为：不操作、买入、卖出
+
+状态转移方程
+$$
+\begin{cases}
+dp[i][0] = dp[i - 1][0]\\
+dp[i][1] = min(dp[i - 1][1], prices[i])\\
+dp[i][2] = max(dp[i - 1][2], prices[i] - dp[i - 1][1])\\
+\end{cases}
+$$
+
+
+```C++
+class Solution {
+public:
+    int maxProfit(vector<int>& prices) {
+        int size = prices.size();
+        if(0 == size) return 0;
+        vector<vector<int>> dp(size, vector<int>(3, 0));
+        dp[0][0] = 0; dp[0][1] = prices[0]; dp[0][2] = 0;
+        for(int i = 1; i < size; ++i) {
+            dp[i][1] = min(dp[i - 1][1], prices[i]);
+            dp[i][2] = max(dp[i - 1][2], prices[i] - dp[i - 1][1]);
+        }
+        return dp[size - 1][2];
+    }
+};
+```
+
+2、动态规划、空间优化
+
+```C++
+class Solution {
+public:
+    int maxProfit(vector<int>& prices) {
+        int size = prices.size();
+        if(0 == size || 1 == size) return 0;
+        int buy = min(prices[0], prices[1]), sell = prices[1];
+        int res = (buy > sell) ? 0 : (sell - buy);
+        for(int i = 2; i < size; ++i) {
+            if(prices[i] < buy) sell = buy = prices[i];
+            else if(prices[i] > sell) sell = prices[i];
+            int margin = sell - buy;
+            if(margin > res) res = margin;
+        }
+        return res;
+    }
+};
+```
+
+此题用单调栈显得有些大材小用，因为没有必要维护过多没用的信息
+
+#### [122. Best Time to Buy and Sell Stock II](https://leetcode-cn.com/problems/best-time-to-buy-and-sell-stock-ii/)
+
+1、动态规划
+
+```C++
+class Solution {
+public:
+    int maxProfit(vector<int>& prices) {
+        int size = prices.size();
+        if(0 == size || 1 == size) return 0;
+        int dp[2] = {prices[0], prices[0]};
+        int res = 0;
+        for(int i = 1; i < size; ++i) {
+            if(prices[i] <= dp[1]) {
+                res += dp[1] - dp[0];
+                dp[0] = dp[1] = prices[i];
+            } else {
+                dp[1] = prices[i];
+            }
+        }
+        return res + dp[1] - dp[0];
+    }
+};
+```
+
+#### [123. Best Time to Buy and Sell Stock III](https://leetcode-cn.com/problems/best-time-to-buy-and-sell-stock-iii/)
+
+1、贪心（一次错误的尝试）
+
+错误的尝试源于错误的假设：问题可以由子问题的最优解得到，这正是贪心的典型特征。
+
+贪心选择了子问题的最优路径之后，其它当前次优的路径便被完全抛弃。而这道题，问题的正解却可能来自于那些被抛弃的次优路径，所以贪心不能解决该问题，但从测试的结果看来，贪心虽然得到的结果不正确，但却已经很接近正确答案了。贪心速度会快一点。
+
+```C++
+class Solution {
+public:
+    int maxProfit(vector<int>& prices) {
+        int size = prices.size();
+        if(0 == size || 1 == size) return 0;
+        prices.push_back(-1); //方便最后的处理
+        int first_margin = 0, second_margin = 0, left_merge_margin = 0, right_merge_margin = 0, margin;
+        vector<int> buy(3, prices[0]), sell(3, prices[0]);
+        for(int i = 1; i <= size; ++i) {
+            if(prices[i] < sell[2]) {
+                margin = sell[2] - buy[2];
+                left_merge_margin = max((sell[1] - buy[0]), max(first_margin, second_margin));
+                right_merge_margin = max((sell[2] - buy[1]), max(second_margin, margin));
+                // 下面的判断选择当前能最优路径，输入序列:[15,90,20,100,10,70,30,90]
+                if(left_merge_margin + margin > right_merge_margin + first_margin) {
+                    first_margin = left_merge_margin;
+                    second_margin = margin;
+                    buy[0] = min(buy[0], buy[1]);
+                    buy[1] = buy[2];
+                } else {
+                    second_margin = right_merge_margin;
+                    buy[1] = min(buy[1], buy[2]);
+                }
+                sell[1] = sell[2];
+                while(i < size && prices[i + 1] < prices[i]) ++i; // 3,2,1
+                sell[2] = buy[2] = prices[i];
+            } else {
+                sell[2] = prices[i];
+            }
+        }
+        return first_margin + second_margin;
+    }
+};
+```
+
+2、问题拆分
+
+寻找两次交易的分界点
+
+```C++
+class Solution {
+public:
+    int maxProfit(vector<int>& prices) {
+        int n = prices.size();
+        if(n == 0) return 0;
+        int minPri = prices.front(), maxPro1 = 0; // 顺序遍历的最小pirce和最大利润
+        int maxPri = prices.back(), maxPro2 = 0;  // 逆序遍历的最大price和最大利润
+        vector<int> profits1(n,0), profits2(n,0); // 顺序和逆序的利润分布
+        for(int i = 0; i < n; i++){
+            if(prices[i] <= minPri) minPri = prices[i];
+            else maxPro1 = max(maxPro1, prices[i]-minPri);
+            profits1[i] = maxPro1;
+            if(prices[n-i-1] >= maxPri) maxPri = prices[n-i-1];
+            else maxPro2 = max(maxPro2, maxPri-prices[n-i-1]);
+            profits2[n-i-1] = maxPro2;
+        }
+        int maxPro = profits1[n-1];
+        for(int i = 0; i < n-1; i++){
+            maxPro = max(maxPro, profits1[i]+profits2[i+1]);
+        }
+        return maxPro;
+    }
+};
+```
+
+3、动态规划
+
+假定每一个交易日为一个阶段，每一个阶段分为五种状态：不操作、第一次买入或卖出、第二次买入或卖出
+
+状态转移方程:
+$$
+\begin{cases}
+dp[i][0] = dp[i - 1][0]\\
+dp[i][1] = min(dp[i - 1][1], prices[i])\\
+dp[i][2] = max(dp[i - 1][2], prices[i] - dp[i - 1][1])\\
+dp[i][3] = 
+\begin{cases}
+min(dp[i - 1][3], prices[i]), & dp[i][2] == dp[i - 1][2]\\
+prices[i], & dp[i][2] <> dp[i - 1][2]
+\end{cases}\\
+dp[i][4] = max(dp[i - 1][2], prices[i] - dp[i - 1][3])
+\end{cases}
+$$
+
+```C++
+class Solution {
+public:
+    int maxProfit(vector<int>& prices) {
+        int size = prices.size();
+        if(0 == size) return 0;
+        vector<vector<int>> dp(size, vector<int>(5, 0));
+        dp[0][0] = 0; dp[0][1] = prices[0]; dp[0][2] = 0; dp[0][3] = prices[0];
+        for(int i = 1; i < size; ++i) {
+            dp[i][1] = min(dp[i - 1][1], prices[i]);
+            dp[i][2] = max(dp[i - 1][2], prices[i] - dp[i - 1][1]);
+
+            if(dp[i][2] != dp[i - 1][2]) dp[i][3] = prices[i];
+            else dp[i][3] = min(dp[i - 1][3], prices[i]);
+            dp[i][4] = max(dp[i - 1][4], dp[i - 1][2] + prices[i] - dp[i - 1][3]);
+        }
+        return dp[size - 1][4];
+    }
+};
+/*
+提交记录
+207 / 214 个通过测试用例
+状态：解答错误
+输入：[6,1,3,2,4,7]
+输出：6
+预期：7
+*/
+```
+
+$$
+\begin{cases}
+dp[i][0] = dp[i - 1][0]\\
+dp[i][1] = min(dp[i - 1][1],\ prices[i])\\
+dp[i][2] = max(dp[i - 1][2],\ prices[i] - dp[i - 1][1])\\
+dp[i][3] = min(dp[i - 1][3],\ prices[i] - dp[i - 1][2])\\
+dp[i][4] = max(dp[i - 1][2],\ prices[i] - dp[i - 1][3])
+\end{cases}
+$$
+
+
+
+```C++
+class Solution {
+public:
+    int maxProfit(vector<int>& prices) {
+        int size = prices.size();
+        if(0 == size) return 0;
+        vector<vector<int>> dp(size, vector<int>(5, 0));
+        dp[0][0] = 0; dp[0][1] = prices[0]; dp[0][2] = 0; dp[0][3] = prices[0];
+        for(int i = 1; i < size; ++i) {
+            dp[i][1] = min(dp[i - 1][1], prices[i]);
+            dp[i][2] = max(dp[i - 1][2], prices[i] - dp[i - 1][1]);
+            dp[i][3] = min(dp[i - 1][3], prices[i] - dp[i - 1][2]);
+            dp[i][4] = max(dp[i - 1][4], prices[i] - dp[i - 1][3]);
+        }
+        return dp[size - 1][4];
+    }
+};
+```
+
+
+
+#### [309. Best Time to Buy and Sell Stock with Cooldown](https://leetcode-cn.com/problems/best-time-to-buy-and-sell-stock-with-cooldown/)
+
+1、动态规划
+
+每一个交易日为一个阶段，每个阶段有5种状态：不操作、冻结时的总利润、买入、卖出
+$$
+\begin{cases}
+dp[i][1] = max(dp[i - 1][1], dp[i - 1][3]) \\
+dp[i][2] = min(dp[i - 1][2], prices[i] - dp[i - 1][1]) \\
+dp[i][3] = max(dp[i - 1][3], prices[i] - dp[i - 1][2])
+\end{cases}
+$$
+
+
+```C++
+class Solution {
+public:
+    int maxProfit(vector<int>& prices) {
+        int size = prices.size();
+        if(0 == size || 1 == size) return 0;
+        vector<vector<int>> dp(size, vector<int>(4, 0));
+        dp[0][2] = prices[0];
+        for(int i = 1; i < size; ++i) {
+            dp[i][1] = max(dp[i - 1][1], dp[i - 1][3]);
+            dp[i][2] = min(dp[i - 1][2], prices[i] - dp[i - 1][1]);
+            dp[i][3] = max(dp[i - 1][3], prices[i] - dp[i - 1][2]);
+        }
+        return dp[size - 1][3];
+    }
+};
+```
+
+
+
+#### [188. Best Time to Buy and Sell Stock IV](https://leetcode-cn.com/problems/best-time-to-buy-and-sell-stock-iv/)
+
+1、动态规划
+
+用三维数组来表示，思路会更加清晰
+
+状态转移方程：
+$$
+i表示第i个交易日，k表示最多买卖次数，0，1分别表示买入和卖出\\
+dp[i][k][0]表示买卖当前次数的最低成本\\
+dp[i][k][1]表示买卖当前次数的最大利润\\
+\begin{cases}
+dp[i][k][0] = min(dp[i - 1][k][0],\ prices[i] - dp[i - 1][k - 1][1])\\
+dp[i][k][1] = max(dp[i - 1][k][1],\ prices[i] - dp[i - 1][k][0])
+\end{cases}
+$$
+
+
+
+```C++
+// i表示第i个交易日，k表示最多买卖次数，0，1分别表示买入和卖出
+// dp[i][k][0]表示买卖当前次数的最低成本
+// dp[i][k][1]表示买卖当前次数的最大利润
+class Solution {
+public:
+    int maxProfit(int k, vector<int>& prices) {
+        int size = prices.size();
+        if(0 == size || 1 == size) return 0;
+        if(k >= size / 2) return greedy(prices);
+        prices.push_back(-1);
+        vector<vector<vector<int>>> dp(size + 1, vector<vector<int>>(k + 1, vector<int>(2, 0)));
+        for(int i = 0; i <= k; ++i) dp[0][i][0] = prices[0];
+        for(int i = 1; i <= size; ++i) {
+            for(int j = 1; j <= k; ++j) {
+                dp[i][j][0] = min(dp[i - 1][j][0], prices[i] - dp[i - 1][j - 1][1]);
+                dp[i][j][1] = max(dp[i - 1][j][1], prices[i] - dp[i - 1][j][0]);
+            }
+        }
+        return dp[size][k][1];
+    }
+    int greedy(vector<int>& prices) {
+        int size = prices.size(), res = 0;
+        for(int i = 1; i < size; ++i) {
+            if(prices[i] > prices[i - 1]) res += prices[i] - prices[i - 1];
+        }
+        return res;
+    }
+};
+```
+
+2、动态规划
+
+二维数组，由三维转化而来，并没有节省空间的使用
+
+```C++
+class Solution {
+public:
+    int maxProfit(int k, vector<int>& prices) {
+        int size = prices.size();
+        if(0 == size || 1 == size) return 0;
+        if(k >= size / 2) return greedy(prices);
+        vector<vector<int>> dp(size, vector<int>(k * 2 + 1, 0));
+        for(int i = 1; i <= k; ++i) dp[0][i * 2 - 1] = prices[0];
+        for(int i = 1; i < size; ++i) {
+            for(int j = 1; j <= k; ++j) {
+                int in = j * 2 - 1, out = j * 2;
+                dp[i][in] = min(dp[i - 1][in], prices[i] - dp[i - 1][in - 1]);
+                dp[i][out] = max(dp[i - 1][out], prices[i] - dp[i - 1][in]);
+            }
+        }
+        return dp[size - 1][k * 2];
+    }
+    int greedy(vector<int>& prices) {
+        int size = prices.size(), res = 0;
+        for(int i = 1; i < size; ++i) {
+            if(prices[i] > prices[i - 1]) res += prices[i] - prices[i - 1];
+        }
+        return res;
+    }
+};
+```
+
+3、动态规划、滚动数组优化空间
+
+用二维数组来表示，可以转化成一维数组
+$$
+i表示第i个交易日，k表示最多买卖次数，0，1分别表示买入和卖出\\
+\begin{cases}
+dp[j][0] = min(dp[j][0], prices[i] - dp[j - 1][1])\\
+dp[j][1] = max(dp[j][1], prices[i] - dp[j][0])
+\end{cases}
+$$
+
+
+```C++
+class Solution {
+public:
+    int maxProfit(int k, vector<int>& prices) {
+        int size = prices.size();
+        if(0 == size || 1 == size) return 0;
+        if(k >= size / 2) return greedy(prices);
+        prices.push_back(-1);
+        vector<vector<int>> dp(k + 1, vector<int>(2, 0));
+        for(int i = 0; i <= k; ++i) dp[i][0] = prices[0];
+        for(int i = 1; i <= size; ++i) {
+            for(int j = 1; j <= k; ++j) {
+                dp[j][0] = min(dp[j][0], prices[i] - dp[j - 1][1]);
+                dp[j][1] = max(dp[j][1], prices[i] - dp[j][0]);
+            }
+        }
+        return dp[k][1];
+    }
+    int greedy(vector<int>& prices) {
+        int size = prices.size(), res = 0;
+        for(int i = 1; i < size; ++i) {
+            if(prices[i] > prices[i - 1]) res += prices[i] - prices[i - 1];
+        }
+        return res;
+    }
+};
+```
+
+
+
+#### [714. Best Time to Buy and Sell Stock with Transaction Fee](https://leetcode-cn.com/problems/best-time-to-buy-and-sell-stock-with-transaction-fee/)
+
+1、贪心的错误应用
+
+错误解法
+
+```C++
+class Solution {
+public:
+    int maxProfit(vector<int>& prices, int fee) {
+        int size = prices.size();
+        if(0 == size || 1 == size) return 0;
+        int premargin = 0, merge_margin = 0, margin = 0, res = 0;
+        prices.push_back(-1);
+        vector<int> buy(2, prices[0]), sell(2, prices[0]);
+        for(int i = 1; i <= size; ++i) {
+            if(prices[i] < sell[1]) {
+                margin = sell[1] - buy[1] - fee;
+                merge_margin = sell[1] - buy[0] - fee;
+                premargin = max(premargin + margin, merge_margin);
+                if(premargin < 0) premargin = 0;
+                while(i < size && prices[i] > prices[i + 1]) ++i;
+                buy[1] = prices[i];
+                if(prices[i] <= buy[0]) {
+                    buy[0] = prices[i];
+                    res += premargin;
+                    premargin = 0;
+                }
+            }  
+            while(i < size && prices[i] <= prices[i + 1]) ++i;
+            sell[1] = prices[i];
+        }
+        return res;
+    }
+};
+```
+
+2、动态规划
+
+```C++
+class Solution {
+public:
+    int maxProfit(vector<int>& prices, int fee) {
+        int size = prices.size();
+        if(0 == size || 1 == size) return 0;
+        vector<vector<int>> dp(size, vector<int>(2, 0));
+        dp[0][0] = prices[0] + fee;
+        for(int i = 1; i < size; ++i) {
+            dp[i][0] = min(dp[i - 1][0], prices[i] - dp[i - 1][1] + fee);
+            dp[i][1] = max(dp[i - 1][1], prices[i] - dp[i - 1][0]);
+        }
+        return dp[size - 1][1];
     }
 };
 ```
